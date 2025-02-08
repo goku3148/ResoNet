@@ -6,11 +6,11 @@ import matplotlib.pyplot as plt
 
 torch.set_default_dtype(torch.float32)
 
-data_paths = {"train_cha":r"E:\PythonProjects\ResoNet\dataset\arc-agi_training_challenges.json",
-              "train_sol":r"E:\PythonProjects\ResoNet\dataset\arc-agi_training_solutions.json",
-              "test_cha":r"E:\PythonProjects\ResoNet\dataset\arc-agi_test_challenges.json",
-              "eval_sol":r"E:\PythonProjects\ResoNet\dataset\arc-agi_evaluation_solutions.json",
-              "eval_cha":r"E:\PythonProjects\ResoNet\dataset\arc-agi_evaluation_challenges.json"}
+data_paths = {"train_cha":r"dataset\arc-agi_training_challenges.json",
+              "train_sol":r"dataset\arc-agi_training_solutions.json",
+              "test_cha":r"dataset\arc-agi_test_challenges.json",
+              "eval_sol":r"dataset\arc-agi_evaluation_solutions.json",
+              "eval_cha":r"dataset\arc-agi_evaluation_challenges.json"}
 
 with open(data_paths['eval_cha'],'r') as eval_cha:
     eval_cha = json.load(eval_cha)
