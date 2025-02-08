@@ -8,7 +8,7 @@ ResoNet is an innovative neural network-based project designed to solve reasonin
 ResoNet/
 │
 ├── Y_NETS/
-│   ├── resonet.py
+│   ├── resonet_v1.py
 │   └── resonet_v2.py
 │
 ├── dataset/
