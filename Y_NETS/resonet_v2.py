@@ -14,44 +14,105 @@ from torch.optim.lr_scheduler import LambdaLR
 
 
 class MaskedMSELoss_element_wise(nn.Module):
-    def __init__(self,device='cuda'):
+    def __init__(self, device='cuda'):
+        """
+        Initializes the MaskedMSELoss_element_wise class.
+
+        Args:
+            device (str): The device to use for computations.
+        """
         super(MaskedMSELoss, self).__init__()
         self.mse = nn.MSELoss(reduction='none')
         self.device = device
 
     def forward(self, predictions, targets):
+        """
+        Computes the element-wise masked MSE loss.
+
+        Args:
+            predictions (Tensor): The predicted values.
+            targets (Tensor): The target values.
+
+        Returns:
+            Tensor: The element-wise masked MSE loss.
+        """
         elementwise_loss = self.mse(predictions, targets).to(self.device)
         mask = ~((predictions == 0) & (targets == 0)).to(self.device)
         masked_loss = elementwise_loss * mask.float()
         return masked_loss
 
-class MaskedMSELoss(nn.Module):
-        def __init__(self, device='cuda'):
-            super(MaskedMSELoss, self).__init__()
-            self.mse = nn.MSELoss(reduction='none')
-            self.device = device
 
-        def forward(self, predictions, targets):
-            elementwise_loss = self.mse(predictions, targets).to(self.device)
-            mask = ~((predictions == 0) & (targets == 0)).to(self.device)
-            masked_loss = elementwise_loss * mask.float()
-            return masked_loss.mean()
+class MaskedMSELoss(nn.Module):
+    def __init__(self, device='cuda'):
+        """
+        Initializes the MaskedMSELoss class.
+
+        Args:
+            device (str): The device to use for computations.
+        """
+        super(MaskedMSELoss, self).__init__()
+        self.mse = nn.MSELoss(reduction='none')
+        self.device = device
+
+    def forward(self, predictions, targets):
+        """
+        Computes the masked MSE loss.
+
+        Args:
+            predictions (Tensor): The predicted values.
+            targets (Tensor): The target values.
+
+        Returns:
+            Tensor: The masked MSE loss.
+        """
+        elementwise_loss = self.mse(predictions, targets).to(self.device)
+        mask = ~((predictions == 0) & (targets == 0)).to(self.device)
+        masked_loss = elementwise_loss * mask.float()
+        return masked_loss.mean()
 
 
 class CappedReLU(nn.Module):
-    def __init__(self,device):
+    def __init__(self, device):
+        """
+        Initializes the CappedReLU class.
+
+        Args:
+            device (str): The device to use for computations.
+        """
         super(CappedReLU, self).__init__()
         self.device = device
 
     def forward(self, x):
+        """
+        Applies the capped ReLU activation function.
+
+        Args:
+            x (Tensor): The input tensor.
+
+        Returns:
+            Tensor: The output tensor after applying capped ReLU.
+        """
         return torch.where((x > 0) & (x <= 1), x, torch.zeros_like(x)).to(self.device)
 
 
 class FormMask(Module):
     def __init__(self):
+        """
+        Initializes the FormMask class.
+        """
         super(FormMask, self).__init__()
 
     def forward(self, x, position):
+        """
+        Applies a mask to the input tensor based on the given position.
+
+        Args:
+            x (Tensor): The input tensor.
+            position (tuple): The position to apply the mask.
+
+        Returns:
+            Tensor: The masked tensor.
+        """
         x_0, y_0, x_1, y_1 = position
         mask = torch.zeros_like(x)
         mask[:,:, x_0:x_1, y_0:y_1] = x[:,:, x_0:x_1, y_0:y_1]
@@ -61,6 +122,16 @@ class FormMask(Module):
 
 class CWG(Module):  # Channel Selection Layer or Channel Wise Gating
     def __init__(self, size, channels, batch_size, node_activation=False, device='cpu'):
+        """
+        Initializes the CWG class.
+
+        Args:
+            size (int): The size of the input.
+            channels (int): The number of channels.
+            batch_size (int): The batch size.
+            node_activation (bool): Whether to apply node activation.
+            device (str): The device to use for computations.
+        """
         super(CWG, self).__init__()
         self.batch_size = batch_size
         self.weights = nn.Parameter(torch.Tensor(channels, size)).to(device)
@@ -71,11 +142,26 @@ class CWG(Module):  # Channel Selection Layer or Channel Wise Gating
         self.weight_init(self.weights, self.bias)
 
     def weight_init(self, weight: nn.Parameter, bias: nn.Parameter):
+        """
+        Initializes the weights and bias.
+
+        Args:
+            weight (nn.Parameter): The weight parameter.
+            bias (nn.Parameter): The bias parameter.
+        """
         nn.init.xavier_uniform(weight.data)
         nn.init.zeros_(bias.data)
 
     def forward(self, x):
+        """
+        Applies the CWG layer to the input tensor.
 
+        Args:
+            x (Tensor): The input tensor.
+
+        Returns:
+            Tensor: The output tensor after applying CWG.
+        """
         output = []
         for sample in x:
             diagonal_inte = torch.diagonal(sample.T @ self.weights)
@@ -88,6 +174,13 @@ class CWG(Module):  # Channel Selection Layer or Channel Wise Gating
 
 class GeGate(Module):
     def __init__(self, input_size, device):
+        """
+        Initializes the GeGate class.
+
+        Args:
+            input_size (int): The size of the input.
+            device (str): The device to use for computations.
+        """
         super(GeGate, self).__init__()
         self.weights = nn.Parameter(torch.Tensor(input_size)).to(device)
         self.bais = nn.Parameter(torch.Tensor(input_size)).to(device)
@@ -96,22 +189,44 @@ class GeGate(Module):
         self.weight_init(self.weights, self.bais)
 
     def weight_init(self, weight: nn.Parameter, bias: nn.Parameter):
+        """
+        Initializes the weights and bias.
+
+        Args:
+            weight (nn.Parameter): The weight parameter.
+            bias (nn.Parameter): The bias parameter.
+        """
         nn.init.ones_(weight.data)
         nn.init.zeros_(bias.data)
 
     def forward(self, x):
+        """
+        Applies the GeGate layer to the input tensor.
+
+        Args:
+            x (Tensor): The input tensor.
+
+        Returns:
+            Tensor: The output tensor after applying GeGate.
+        """
         output = []
         for sample in x:
-            # sample = self.crelu(self.fcl(sample))
             sample = self.crelu(sample @ torch.diag(self.weights) + self.bais)
             output.append(sample)
         return torch.stack(output)
 
 
 class IDEA_PROJ(Module):
-    # Example input_size : ((30, 30), 2)
-    # shape : 30x30 , channels : 2
-    def __init__(self, input_shape, batch_size=1,node_activation=False, device='cpu'):
+    def __init__(self, input_shape, batch_size=1, node_activation=False, device='cpu'):
+        """
+        Initializes the IDEA_PROJ class.
+
+        Args:
+            input_shape (tuple): The shape of the input.
+            batch_size (int): The batch size.
+            node_activation (bool): Whether to apply node activation.
+            device (str): The device to use for computations.
+        """
         super(IDEA_PROJ, self).__init__()
         self.device = device
         self.batch_size = batch_size
@@ -122,57 +237,50 @@ class IDEA_PROJ(Module):
         self.output_channels = 1
         self.t_output_channels = 12 * self.output_channels
 
-        # Calculate padding for each convolutional layer to keep output size at 30x30
-        padding_1x3 = (0, 1)  # For kernel (2,2) and stride 2
-        padding_3x1 = (1, 0)  # For kernel (3,3) and stride 3
-        padding_3x3 = (1, 1)
-        padding_3x5 = (1, 2)
-        padding_5x3 = (2, 1)  # For kernel (4,4) and stride 4
-        padding_5x5 = (2, 2)  # For kernel (5,5) and stride 5
-        padding_5x7 = (2, 3)
-        padding_7x5 = (3, 2)
-        padding_7x7 = (3, 3)
-        padding_7x9 = (3, 4)
-        padding_9x7 = (4, 3)
-        padding_9x9 = (4, 4)
+        # Define kernel sizes and paddings
+        k_1x3 = ((1, 3), (1, 1), (0, 1))
+        k_3x1 = ((3, 1), (1, 1), (1, 0))
+        k_3x3 = ((3, 3), (1, 1), (1, 1))
+        k_3x5 = ((3, 5), (1, 1), (1, 2))
+        k_5x3 = ((5, 3), (1, 1), (2, 1))
+        k_5x5 = ((5, 5), (1, 1), (2, 2))
+        k_5x7 = ((5, 7), (1, 1), (2, 3))
+        k_7x5 = ((7, 5), (1, 1), (3, 2))
+        k_7x7 = ((7, 7), (1, 1), (3, 3))
+        k_7x9 = ((7, 9), (1, 1), (3, 4))
+        k_9x7 = ((9, 7), (1, 1), (4, 3))
+        k_9x9 = ((9, 9), (1, 1), (4, 4))
 
-        cnn_0_p1 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=(1, 3), stride=(1, 1),
-                             padding=padding_1x3).to(self.device)
-        cnn_0_p2 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=(3, 1), stride=(1, 1),
-                             padding=padding_3x1).to(self.device)
-        cnn_0_p3 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=(3, 3), stride=(1, 1),
-                             padding=padding_3x3).to(self.device)
-        cnn_0_p4 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=(3, 5), stride=(1, 1),
-                             padding=padding_3x5).to(self.device)
-        cnn_0_p5 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=(5, 3), stride=(1, 1),
-                             padding=padding_5x3).to(self.device)
-        cnn_0_p6 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=(5, 5), stride=(1, 1),
-                             padding=padding_5x5).to(self.device)
-        cnn_0_p7 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=(7, 5), stride=(1, 1),
-                             padding=padding_7x5).to(self.device)
-        cnn_0_p8 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=(5, 7), stride=(1, 1),
-                             padding=padding_5x7).to(self.device)
-        cnn_0_p9 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=(7, 7), stride=(1, 1),
-                             padding=padding_7x7).to(self.device)
-        cnn_0_p10 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=(7, 9), stride=(1, 1),
-                              padding=padding_7x9).to(self.device)
-        cnn_0_p11 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=(9, 7), stride=(1, 1),
-                              padding=padding_9x7).to(self.device)
-        cnn_0_p12 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=(9, 9), stride=(1, 1),
-                              padding=padding_9x9).to(self.device)
+        cnn_0_p1 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=k_1x3[0], stride=k_1x3[1], padding=k_1x3[2]).to(self.device)
+        cnn_0_p2 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=k_3x1[0], stride=k_3x1[1], padding=k_3x1[2]).to(self.device)
+        cnn_0_p3 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=k_3x3[0], stride=k_3x3[1], padding=k_3x3[2]).to(self.device)
+        cnn_0_p4 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=k_3x5[0], stride=k_3x5[1], padding=k_3x5[2]).to(self.device)
+        cnn_0_p5 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=k_5x3[0], stride=k_5x3[1], padding=k_5x3[2]).to(self.device)
+        cnn_0_p6 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=k_5x5[0], stride=k_5x5[1], padding=k_5x5[2]).to(self.device)
+        cnn_0_p7 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=k_7x5[0], stride=k_7x5[1], padding=k_7x5[2]).to(self.device)
+        cnn_0_p8 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=k_5x7[0], stride=k_5x7[1], padding=k_5x7[2]).to(self.device)
+        cnn_0_p9 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=k_7x7[0], stride=k_7x7[1], padding=k_7x7[2]).to(self.device)
+        cnn_0_p10 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=k_7x9[0], stride=k_7x9[1], padding=k_7x9[2]).to(self.device)
+        cnn_0_p11 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=k_9x7[0], stride=k_9x7[1], padding=k_9x7[2]).to(self.device)
+        cnn_0_p12 = nn.Conv2d(in_channels=channels, out_channels=self.output_channels, kernel_size=k_9x9[0], stride=k_9x9[1], padding=k_9x9[2]).to(self.device)
 
         self.C_layers = nn.ModuleList([cnn_0_p1, cnn_0_p2, cnn_0_p3, cnn_0_p4, cnn_0_p5, cnn_0_p6, cnn_0_p7, cnn_0_p8, cnn_0_p9, cnn_0_p10, cnn_0_p11, cnn_0_p12])
 
-        # Define max-pooling layers to reduce the output size by half (to 15x15)
-        # self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         self.relu = nn.ReLU()
         self.flat = nn.Flatten()
 
         self.csl = CWG(H_in*W_in,self.t_output_channels,batch_size,device=self.device,node_activation=False)
 
     def forward(self, x):
+        """
+        Applies the IDEA_PROJ layer to the input tensor.
 
+        Args:
+            x (Tensor): The input tensor.
 
+        Returns:
+            Tensor: The output tensor after applying IDEA_PROJ.
+        """
         batch,ch,x_h,x_w = x.shape
         conv_i = []
         for i, conv_layer in enumerate(self.C_layers):
@@ -191,8 +299,23 @@ class IDEA_PROJ(Module):
 
         return output
 
+
 class RE_CONS(nn.Module):
     def __init__(self, input_channels, output_channels, kernel_size=3, stride=1, padding=1, output_padding=0, node_activation=False, device='cpu',proj='conv'):
+        """
+        Initializes the RE_CONS class.
+
+        Args:
+            input_channels (int): The number of input channels.
+            output_channels (int): The number of output channels.
+            kernel_size (int or tuple): The size of the kernel.
+            stride (int or tuple): The stride of the convolution.
+            padding (int or tuple): The padding of the convolution.
+            output_padding (int or tuple): The output padding of the convolution.
+            node_activation (bool): Whether to apply node activation.
+            device (str): The device to use for computations.
+            proj (str): The projection type.
+        """
         super(RE_CONS, self).__init__()
         self.decode = nn.ConvTranspose2d(
             in_channels=input_channels,
@@ -207,14 +330,33 @@ class RE_CONS(nn.Module):
         self.activation = nn.ReLU()  # Use ReLU as activation (or customize)
 
     def forward(self, x):
+        """
+        Applies the RE_CONS layer to the input tensor.
 
+        Args:
+            x (Tensor): The input tensor.
+
+        Returns:
+            Tensor: The output tensor after applying RE_CONS.
+        """
         x = self.decode(x)
         x = self.activation(x) if self.node_activation else x
 
         return x
 
+
 class RE_Encoder(Module):
     def __init__(self, input_shape=(1,30,30), batch_size=1, gen_size=50, reso_learning: bool = True,device='cpu'):
+        """
+        Initializes the RE_Encoder class.
+
+        Args:
+            input_shape (tuple): The shape of the input.
+            batch_size (int): The batch size.
+            gen_size (int): The size of the generator input.
+            reso_learning (bool): Whether to apply resolution learning.
+            device (str): The device to use for computations.
+        """
         super(RE_Encoder, self).__init__()
         self.input_shape = input_shape
         self.channels,H_in,W_in = input_shape
@@ -232,7 +374,7 @@ class RE_Encoder(Module):
 
         self.fcl_d_0 = nn.Linear(in_features=self.linear_feature,out_features=self.linear_feature).to(device)
         self.fcl_d_1 = nn.Linear(in_features=self.linear_feature, out_features=gen_input_size).to(device)
-        self.fcl_u_0 = nn.Linear(in_features=gen_input_size, out_features=self.linear_feature).to(device)
+        self.fcl_u_0 = nn.Linear(in_features=gen_size, out_features=self.linear_feature).to(device)
         self.fcl_u_1 = nn.Linear(in_features=self.linear_feature, out_features=self.linear_feature).to(device)
 
         self.recon_1 = IDEA_PROJ(input_shape=input_shape, batch_size=batch_size, device=device, node_activation=True)
@@ -246,7 +388,15 @@ class RE_Encoder(Module):
         self.fmask = FormMask()
 
     def forward(self, x: Tensor):
+        """
+        Applies the RE_Encoder layer to the input tensor.
 
+        Args:
+            x (Tensor): The input tensor.
+
+        Returns:
+            tuple: The generator input and encoder output.
+        """
         batch,channel,h_x,w_x = x.shape
         x_0 = x
         x = self.idea_proj_0(x)
@@ -273,6 +423,15 @@ class RE_Encoder(Module):
 
 class RE_Decoder(Module):
     def __init__(self, input_shape, gen_size, batch_size, device):
+        """
+        Initializes the RE_Decoder class.
+
+        Args:
+            input_shape (tuple): The shape of the input.
+            gen_size (int): The size of the generator input.
+            batch_size (int): The batch size.
+            device (str): The device to use for computations.
+        """
         super(RE_Decoder, self).__init__()
 
         self.device = device
@@ -303,7 +462,17 @@ class RE_Decoder(Module):
         self.fmask = FormMask()
 
     def forward(self, x_en, x, position):
+        """
+        Applies the RE_Decoder layer to the input tensor.
 
+        Args:
+            x_en (Tensor): The encoded input tensor.
+            x (Tensor): The input tensor.
+            position (tuple): The position to apply the mask.
+
+        Returns:
+            Tensor: The output tensor after applying RE_Decoder.
+        """
         batch, channel, h_x, w_x = x.shape
         x_in = self.idea_proj_0(x)
         x = self.idea_proj_1(x_in)
@@ -323,8 +492,6 @@ class RE_Decoder(Module):
 
         x = self.relu(self.recon_5(self.relu(x_1 + x_2)))
 
-        #print(x)
-        #x = self.fmask(x,position)
         x = self.flat(x)
         x = self.gegate(x)
         return x
@@ -332,6 +499,16 @@ class RE_Decoder(Module):
 
 class Y_NET(Module):
     def __init__(self, grid_shape, channels, batch_size, neck_size=100, device=None):
+        """
+        Initializes the Y_NET class.
+
+        Args:
+            grid_shape (tuple): The shape of the grid.
+            channels (int): The number of channels.
+            batch_size (int): The batch size.
+            neck_size (int): The size of the neck.
+            device (str): The device to use for computations.
+        """
         super(Y_NET, self).__init__()
         self.grid_shape = grid_shape
         self.channels,self.H_X,self.W_X = grid_shape
@@ -439,18 +616,40 @@ class Y_NET(Module):
             print_bar(i)
         print_bar(total)
 
-    def scaler(self, grid, mode=''):
+    def grid_scaler(self, grid, mode='up'):
+        """
+        Scales the grid values and adjusts the grid size.
+
+        Args:
+            grid (Tensor or list): The input grid to be scaled.
+            mode (str): The scaling mode, either 'up' or 'down'.
+
+        Returns:
+            Tensor: The scaled grid.
+        """
+        if isinstance(grid, list):
+            grid = torch.tensor(grid)
+        
         if mode == 'up':
-            grid = grid + 1
-            grid = grid / 10
-            return grid
-        elif mode == 'down':
-            grid = grid * 10
-            grid = grid - 1
+            grid = (grid + 1) / 10
+            return self.grid_span(grid, mode='up')
+        else:
+            grid = self.grid_span(grid, mode='down')
+            grid = (grid * 10) - 1
             grid[grid == -1] = 0
             return grid
 
     def grid_span(self, grid, mode='up'):
+        """
+        Adjusts the grid size by padding or cropping.
+
+        Args:
+            grid (Tensor): The input grid.
+            mode (str): The mode, either 'up' for padding or 'down' for cropping.
+
+        Returns:
+            Tensor: The adjusted grid.
+        """
         if mode == 'up':
             s_row, s_col = grid.shape
             d_size = (30, 30)
@@ -463,24 +662,34 @@ class Y_NET(Module):
             return m_grid.reshape(1, 30, 30)
         else:
             x_1, y_1, x_2, y_2 = self.get_position(grid)
-            l_grid = grid[x_1:x_2, y_1:y_2]
-            return l_grid
+            return grid[x_1:x_2, y_1:y_2]
 
-    def grid_scaler(self, grid, mode='up'):
-        if isinstance(grid, list):
-            grid = torch.tensor(grid)
-        else:
-            pass
-        if mode == 'up':
-            grid = self.scaler(grid, mode='up')
-            m_grid = self.grid_span(grid, mode='up')
-            return m_grid
-        else:
-            grid = self.grid_span(grid, mode='down')
-            l_grid = self.scaler(grid, mode='down')
-            return l_grid
+    def get_position(self, matrix):
+        """
+        Gets the bounding box of non-zero elements in the matrix.
+
+        Args:
+            matrix (Tensor): The input matrix.
+
+        Returns:
+            tuple: The bounding box coordinates (x_1, y_1, x_2, y_2).
+        """
+        valid_indices = torch.nonzero(matrix != 0, as_tuple=False)
+        position = (valid_indices[0][0], valid_indices[0][1], valid_indices[-1][0] + 1, valid_indices[-1][1] + 1)
+        return position
 
     def data_loader(self, data_pairs: dict, loader: str='test', batch_size: int=16):
+        """
+        Loads the data for training or testing.
+
+        Args:
+            data_pairs (dict): The data pairs.
+            loader (str): The type of loader ('test', 'train', 'eval_train').
+            batch_size (int): The batch size.
+
+        Returns:
+            list: The loaded data.
+        """
         if loader == 'test':
             fit = []
             data_pair = data_pairs
@@ -532,14 +741,46 @@ class Y_NET(Module):
             return train,test
 
     def en_step(self, ex_output, position):
+        """
+        Performs an encoding step.
+
+        Args:
+            ex_output (Tensor): The output tensor.
+            position (tuple): The position to apply the mask.
+
+        Returns:
+            tuple: The encoder output and generator input.
+        """
         gen_input, encoder_output = self.encoder(ex_output)
         return encoder_output, gen_input
 
     def de_step(self, gen_input, input_, position):
+        """
+        Performs a decoding step.
+
+        Args:
+            gen_input (Tensor): The generator input tensor.
+            input_ (Tensor): The input tensor.
+            position (tuple): The position to apply the mask.
+
+        Returns:
+            Tensor: The output tensor after decoding.
+        """
         output = self.decoder(gen_input, input_, position)
         return output
 
     def ssim_loss(self, y_true, y_pred, max_val=1.0):
+        """
+        Computes the Structural Similarity Index (SSIM) loss.
+
+        Args:
+            y_true (Tensor): The ground truth tensor.
+            y_pred (Tensor): The predicted tensor.
+            max_val (float): The maximum value of the input tensors.
+
+        Returns:
+            Tensor: The SSIM loss.
+        """
         C1 = (0.01 * max_val) ** 2
         C2 = (0.03 * max_val) ** 2
 
@@ -560,18 +801,48 @@ class Y_NET(Module):
         return 1 - ssim_index.mean()
 
     def mse_loss(self, y_true, y_pred):
+        """
+        Computes the Mean Squared Error (MSE) loss.
+
+        Args:
+            y_true (Tensor): The ground truth tensor.
+            y_pred (Tensor): The predicted tensor.
+
+        Returns:
+            Tensor: The MSE loss.
+        """
         flat = nn.Flatten()
         y_true = flat(y_true)
         mse_loss = nn.MSELoss()
         return mse_loss(y_true, y_pred)
 
     def masked_mse(self, y_true, y_pred):
+        """
+        Computes the masked Mean Squared Error (MSE) loss.
+
+        Args:
+            y_true (Tensor): The ground truth tensor.
+            y_pred (Tensor): The predicted tensor.
+
+        Returns:
+            Tensor: The masked MSE loss.
+        """
         flat = nn.Flatten()
         y_true = flat(y_true)
         mse_loss = MaskedMSELoss()
         return mse_loss(y_true, y_pred)
 
     def discretize_output(self, output, levels=11):
+        """
+        Discretizes the output tensor.
+
+        Args:
+            output (Tensor): The output tensor.
+            levels (int): The number of discrete levels.
+
+        Returns:
+            Tensor: The discretized output tensor.
+        """
         discrete_values = torch.linspace(0, 1, levels).to(output.device)  # e.g., [0.0, 0.1, ..., 1.0]
 
         # Find the nearest discrete value for each element in output
@@ -580,31 +851,39 @@ class Y_NET(Module):
             output_discretized += torch.abs(output - val).argmin(dim=-1, keepdim=True).float() * val
         return output_discretized
 
-    def get_position(self, matrix):
-        valid_indices = torch.nonzero(matrix != 0, as_tuple=False)
-        position = (valid_indices[0][0], valid_indices[0][1], valid_indices[-1][0] + 1, valid_indices[-1][1] + 1)
-        return position
+    def train_model(self, dataset, batch_size=1, epochs=500, en_lr=0.009, de_lr=0.005, save_path=''):
+        """
+        Trains the model on the provided dataset.
 
-    def train_fit(self, dataset, batch_size=1, epochs=500, en_lr=0.009, de_lr=0.005, save_path=''):
+        Args:
+            dataset (list): The training dataset.
+            batch_size (int): The batch size for training.
+            epochs (int): The number of epochs for training.
+            en_lr (float): The learning rate for the encoder.
+            de_lr (float): The learning rate for the decoder.
+            save_path (str): The path to save the trained model.
 
+        Returns:
+            tuple: The encoder and decoder losses.
+        """
         optimizer_en = optim.Adam(self.encoder.parameters(), lr=en_lr)
         optimizer_de = optim.Adam(self.decoder.parameters(), lr=de_lr)
-        loss_en_, loss_de_ = [], []
+        loss_en_, loss_de_ = []
 
         size = len(dataset)
         iterations = range(epochs)
-        for epo in self.progress_bar(iterations,total=epochs,prefix='Progress'):
-            loss_en_step, loss_de_step = 0,0
+        for epo in self.progress_bar(iterations, total=epochs, prefix='Progress'):
+            loss_en_step, loss_de_step = 0, 0
             for ite in range(size):
                 y_in, y_out = dataset[0][ite].to(self.device), dataset[1][ite].to(self.device)
-                pred_in, gen_input = self.en_step(ex_output=y_out, position=(0,0,0,0))
+                pred_in, gen_input = self.en_step(ex_output=y_out, position=(0, 0, 0, 0))
 
                 loss_en = self.masked_mse(y_in, pred_in)
                 loss_en.backward()
                 optimizer_en.step()
                 optimizer_en.zero_grad()
 
-                pred_out = self.de_step(gen_input=gen_input.detach(), input_=y_in, position=(0,0,0,0))
+                pred_out = self.de_step(gen_input=gen_input.detach(), input_=y_in, position=(0, 0, 0, 0))
                 loss_de = self.masked_mse(y_out, pred_out)
 
                 loss_de.backward()
@@ -613,13 +892,26 @@ class Y_NET(Module):
 
                 loss_en_step += loss_en
                 loss_de_step += loss_de
-            loss_en_.append(float(loss_en_step.to('cpu')/size))
-            loss_de_.append(float(loss_de_step.to('cpu')/size))
+            loss_en_.append(float(loss_en_step.to('cpu') / size))
+            loss_de_.append(float(loss_de_step.to('cpu') / size))
 
-        return loss_en_,loss_de_
+        return loss_en_, loss_de_
 
-    def test_fit(self, arc_problem, epochs=100, activation=50, en_lr=0.009, de_lr=0.005, outputs=4):
+    def evaluate_model(self, arc_problem, epochs=100, activation=50, en_lr=0.009, de_lr=0.005, outputs=4):
+        """
+        Evaluates the model on a given problem and returns the outputs and losses.
 
+        Args:
+            arc_problem (dict): The problem to evaluate.
+            epochs (int): The number of epochs for evaluation.
+            activation (int): The activation threshold.
+            en_lr (float): The learning rate for the encoder.
+            de_lr (float): The learning rate for the decoder.
+            outputs (int): The number of outputs to return.
+
+        Returns:
+            tuple: The outputs, encoder losses, and decoder losses.
+        """
         data_pairs = self.data_loader(arc_problem)
 
         optimizer_en = optim.Adam(self.encoder.parameters(), lr=en_lr)
@@ -628,33 +920,31 @@ class Y_NET(Module):
         iterations = len(data_pairs)
         pred = []
         ite = 0
-        loss_en_, loss_de_ = [], []
+        loss_en_, loss_de_ = []
         in_out = []
         act = int((epochs - 100) / outputs)
         iterable = range(epochs)
-        for ite in self.progress_bar(iterable,total=epochs,prefix="Progress"):
+        for ite in self.progress_bar(iterable, total=epochs, prefix="Progress"):
             for i in range(iterations - 1):
                 y_in = data_pairs[i][0].to(self.device)
                 y_in = y_in.reshape(self.batch_size, self.channels, self.H_X, self.W_X)
                 y_out = data_pairs[i][1].to(self.device)
-                y_out = y_out.reshape(self.batch_size,self.channels,self.H_X,self.W_X)
+                y_out = y_out.reshape(self.batch_size, self.channels, self.H_X, self.W_X)
 
                 pos_y_out = self.get_position(y_out[0][0])
                 pos_y_in = self.get_position(y_in[0][0])
 
                 pred_in, gen_input = self.en_step(ex_output=y_out, position=pos_y_in)
                 loss_en = self.masked_mse(y_in, pred_in)
-                #en_gt = torch.ones_like(loss_en)
 
-                loss_en.backward()#gradient=en_gt)
+                loss_en.backward()
                 optimizer_en.step()
                 optimizer_en.zero_grad()
 
                 pred_out = self.de_step(gen_input=gen_input.detach(), input_=y_in, position=pos_y_out)
                 loss_de = self.masked_mse(y_out, pred_out)
-                #de_gt = torch.ones_like(loss_de)
 
-                loss_de.backward()#gradient=de_gt)
+                loss_de.backward()
                 optimizer_de.step()
                 optimizer_de.zero_grad()
                 data_pairs[-1][1] = torch.round((pred_out.detach().reshape(1, 1, 30, 30)) * 10) / 10
@@ -677,12 +967,7 @@ class Y_NET(Module):
                 loss_de = self.masked_mse(y_out, pred_out)
                 de_gt = torch.ones_like(loss_de)
 
-                #loss_de.backward(gradient=de_gt)
-                #optimizer_de.step()
-                #optimizer_de.zero_grad()
-                data_pairs[-1][1] = torch.round((pred_out.detach().reshape(1 ,1, 30, 30)) * 10) / 10
-
-
+                data_pairs[-1][1] = torch.round((pred_out.detach().reshape(1, 1, 30, 30)) * 10) / 10
 
             loss_en_.append(float(loss_en.to('cpu').mean())), loss_de_.append(float(loss_de.to('cpu').mean()))
 
@@ -691,7 +976,7 @@ class Y_NET(Module):
             if ite > activation and ite % outputs == 0:
                 try:
                     scaled_input, scaled_output = self.grid_scaler(data_pairs[-1][0][0], mode='down'), self.grid_scaler(
-                        data_pairs[-1][1][0].reshape(30,30).to('cpu'), mode='down')
+                        data_pairs[-1][1][0].reshape(30, 30).to('cpu'), mode='down')
                     in_out.append([scaled_input, scaled_output])
                 except Exception as e:
                     print(e)
@@ -705,19 +990,32 @@ class Y_NET(Module):
 
         return in_out, loss_en_, loss_de_
 
-    def test_eval(self, arc_problem, epochs=100, activation=50, en_lr=0.009, de_lr=0.005, noutput=5):
-        train,test = self.data_loader(arc_problem,loader='eval_train')
+    def evaluate_on_test(self, arc_problem, epochs=100, activation=50, en_lr=0.009, de_lr=0.005, noutput=5):
+        """
+        Evaluates the model on a given problem and returns the predictions and losses.
+
+        Args:
+            arc_problem (dict): The problem to evaluate.
+            epochs (int): The number of epochs for evaluation.
+            activation (int): The activation threshold.
+            en_lr (float): The learning rate for the encoder.
+            de_lr (float): The learning rate for the decoder.
+            noutput (int): The number of outputs to return.
+
+        Returns:
+            tuple: The predictions, encoder losses, and decoder losses.
+        """
+        train, test = self.data_loader(arc_problem, loader='eval_train')
 
         optimizer_en = optim.Adam(self.encoder.parameters(), lr=en_lr)
         optimizer_de = optim.Adam(self.decoder.parameters(), lr=de_lr)
-        loss_en_, loss_de_ = [], []
+        loss_en_, loss_de_ = []
 
         iterations = range(epochs)
 
         prediction = []
 
-        for epo in self.progress_bar(iterations,total=epochs,prefix='Progress'):
-
+        for epo in self.progress_bar(iterations, total=epochs, prefix='Progress'):
             y_in, y_out = train[0].to(self.device), train[1].to(self.device)
             pred_in, gen_input = self.en_step(ex_output=y_out, position=(0, 0, 0, 0))
 
@@ -733,8 +1031,6 @@ class Y_NET(Module):
             optimizer_de.step()
             optimizer_de.zero_grad()
 
-
-
             if epo > activation:
                 y_in, y_out = test[0].to(self.device), test[1].to(self.device)
                 pred_in, gen_input = self.en_step(ex_output=y_out, position=(0, 0, 0, 0))
@@ -747,33 +1043,16 @@ class Y_NET(Module):
                 pred_out = self.de_step(gen_input=gen_input.detach(), input_=y_in, position=(0, 0, 0, 0))
                 loss_de = self.masked_mse(y_out, pred_out)
 
-                #loss_de.backward()
-                #optimizer_de.step()
-                #optimizer_de.zero_grad()
-                m_pred = torch.round((pred_out.detach()).view(1,1,30,30) * 10) / 10
+                m_pred = torch.round((pred_out.detach()).view(1, 1, 30, 30) * 10) / 10
                 test[1] = m_pred
                 prediction.append(m_pred)
 
-            loss_en_.append(float(loss_en.to('cpu'))),loss_de_.append(float(loss_de.to('cpu')))
+            loss_en_.append(float(loss_en.to('cpu'))), loss_de_.append(float(loss_de.to('cpu')))
 
         prediction.reverse()
-        scat = int((epochs - activation)/noutput)
-        prediction = [prediction[i*scat] for i in range(noutput)]
-        prediction = torch.stack(prediction).view(noutput,30,30)
+        scat = int((epochs - activation) / noutput)
+        prediction = [prediction[i * scat] for i in range(noutput)]
+        prediction = torch.stack(prediction).view(noutput, 30, 30)
         prediction = prediction.to('cpu')
 
-        return prediction,loss_en_,loss_de_
-
-
-
-pair = torch.rand(size=(16,1,30,30)).to('cuda')
-shape = pair.shape
-batch = 16
-
-encoder = RE_Encoder(batch_size=batch,device='cuda')
-gen,en = encoder(pair)
-decoder = RE_Decoder(input_shape=encoder.input_shape,gen_size=50,batch_size=batch,device='cuda')
-output = decoder(gen,pair,(0,0,0,0))
-
-
-
+        return prediction, loss_en_, loss_de_
